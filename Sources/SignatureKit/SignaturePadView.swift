@@ -49,8 +49,12 @@ public struct SignaturePadView: View {
                 canvas.load(configuration.existing?.strokeData)
             }
         }
-        // A downward swipe must not throw away a signature in progress.
-        .interactiveDismissDisabled(!canvas.isEmpty)
+        // The sheet's own pan gesture competes with the drawing gesture, and
+        // wins: the sheet slides instead of a stroke being drawn. It has to be
+        // off for the whole sheet, not just once a stroke is down — the first
+        // stroke is precisely the one that never gets through. Cancel is the
+        // way out, and it also protects a signature in progress.
+        .interactiveDismissDisabled()
     }
 
     private var pad: some View {

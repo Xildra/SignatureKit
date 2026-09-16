@@ -91,8 +91,9 @@ move when it is drawn again.
 - The package captures no identity. Who signs, in what capacity, under which
   name: all of that belongs to the app, which keeps the `Signature` next to
   the rest. The sheet title stays free — that is where a name goes.
-- Once a stroke is down, the sheet no longer closes on a downward swipe: only
-  Cancel abandons a signature in progress.
+- The sheet cannot be swiped away: its dismiss gesture competes with the
+  drawing gesture and wins, so the sheet would slide instead of a stroke being
+  drawn. Cancel is the way out — which also protects a signature in progress.
 - `signaturePrivacyScreen()` hides the content when the app goes to the
   background. iOS snapshots the screen and writes that image to disk; a
   signature left on screen would end up there.
@@ -108,6 +109,30 @@ move when it is drawn again.
 - The language shown follows the **app**, not the device: an app that does not
   declare French in its localizations (Project → Info → Localizations) shows
   the sheet in English, even on an iPhone set to French.
+
+## Data and privacy
+
+The package stores nothing. It keeps the strokes in memory, renders a PNG,
+and hands both to your callback: no file, no cache, no user defaults, no
+network call. It imports SwiftUI, UIKit, Foundation and CoreGraphics, and
+nothing else. Where a signature ends up is entirely the app's decision.
+
+What is worth deciding on the app side:
+
+- **iCloud sync** only happens if asked for: leave `cloudKitDatabase` alone on
+  `ModelConfiguration`, and do not add the iCloud capability.
+- **Device backups** include the app container by default. Exclude the store
+  with `isExcludedFromBackup` if a signature must never leave the device.
+- **File protection** defaults to `completeUntilFirstUserAuthentication`.
+  Raise it to `complete` to keep signatures unreadable while the device is
+  locked — background work can no longer read them either.
+- **The app switcher snapshot** is the one copy iOS writes outside the app's
+  control. `signaturePrivacyScreen()` exists for exactly that.
+
+A signature kept as a `Codable` property lives inside the store file itself:
+one file to exclude from backups and to protect. `@Attribute(.externalStorage)`
+spreads it over the store *and* its support directory — two places to
+remember, both inside the app container.
 
 ## Building and testing
 
@@ -134,7 +159,7 @@ sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
 Tag every published version:
 
 ```bash
-git tag 3.0.0 && git push --tags
+git tag 1.0.0 && git push --tags
 ```
 
 In each app: **Add Package Dependencies** → the URL → *Up to Next Major
