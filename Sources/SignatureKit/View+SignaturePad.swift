@@ -2,11 +2,11 @@ import SwiftUI
 
 public extension View {
 
-    /// Présente la feuille de signature pour l'élément en cours.
+    /// Presents the signature sheet for the current item.
     ///
-    /// Piloté par un `item` et non par un `Bool` : dans une liste, un booléen
-    /// unique ouvre toujours la même ligne, et un booléen par ligne crée
-    /// autant de feuilles.
+    /// Driven by an `item` rather than a `Bool`: in a list, a single boolean
+    /// always opens the same row, and one boolean per row creates as many
+    /// sheets.
     func signaturePad<Item: Identifiable>(
         item: Binding<Item?>,
         configuration: @escaping (Item) -> SignaturePadConfiguration,
@@ -21,11 +21,11 @@ public extension View {
         }
     }
 
-    /// Masque le contenu quand l'app quitte le premier plan.
+    /// Hides the content when the app leaves the foreground.
     ///
-    /// iOS photographie l'écran au passage en arrière-plan et **écrit cette
-    /// image sur le disque** pour le sélecteur d'app. Une signature affichée
-    /// s'y retrouve, hors de ton contrôle.
+    /// iOS photographs the screen as the app goes to the background and
+    /// **writes that image to disk** for the app switcher. A signature left
+    /// on screen ends up there, outside the app's control.
     func signaturePrivacyScreen() -> some View {
         modifier(PrivacyScreen())
     }
@@ -41,7 +41,7 @@ private struct PrivacyScreen: ViewModifier {
                     Rectangle()
                         .fill(.regularMaterial)
                         .overlay {
-                            Image(systemName: "hand.raised.fill")
+                            Image.privacy
                                 .font(.system(size: 44))
                                 .foregroundStyle(.secondary)
                         }

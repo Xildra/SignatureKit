@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// Affiche une signature enregistrée.
+/// Displays a saved signature.
 ///
-/// Rendue en `.template` : le PNG est noir sur fond transparent, ce mode
-/// le reteinte avec la couleur du texte et la garde lisible en mode sombre.
+/// Rendered as `.template`: the PNG is black on transparent, and that mode
+/// re-tints it with the text color, keeping it readable in dark mode.
 public struct SignatureThumbnail: View {
 
     private let signature: Signature
@@ -22,9 +22,8 @@ public struct SignatureThumbnail: View {
                 .scaledToFit()
                 .foregroundStyle(.primary)
                 .frame(height: height)
-                .accessibilityLabel(signature.signerName.isEmpty
-                                    ? "Signature"
-                                    : "Signature de \(signature.signerName)")
+                // An app that knows who signed can override this label.
+                .accessibilityLabel(Text(.signature))
         }
     }
 }

@@ -1,18 +1,18 @@
 import SwiftUI
 
-/// Rend les traits.
+/// Draws the strokes.
 ///
-/// L'épaisseur variable est obtenue en regroupant les segments par épaisseur
-/// arrondie et en traçant un `Path` par groupe. Un contour rempli donnerait
-/// un rendu plus fin mais ouvre la porte aux trous de remplissage quand deux
-/// segments se croisent en sens inverse ; le regroupement est prévisible et
-/// se rend à l'identique dans `ImageRenderer`.
+/// Variable width is obtained by grouping segments by rounded width and
+/// stroking one `Path` per group. A filled outline would look finer but
+/// opens the door to fill holes wherever two segments cross in opposite
+/// directions; grouping is predictable and renders identically inside
+/// `ImageRenderer`.
 struct SignatureStrokesView: View {
 
     let strokes: [SignatureStroke]
     var ink: Color = .black
 
-    /// Pas de quantification, en points. Plus fin = plus de calques.
+    /// Quantization step, in points. Finer = more layers.
     private let step: CGFloat = 0.5
 
     var body: some View {
@@ -40,7 +40,7 @@ struct SignatureStrokesView: View {
             let points = stroke.points
             guard let first = points.first else { continue }
 
-            // Un simple appui : un point rond.
+            // A single tap: one round dot.
             guard points.count > 1 else {
                 let width = quantized(first.width)
                 paths[width, default: Path()].move(to: first.cgPoint)

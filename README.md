@@ -1,19 +1,21 @@
 # SignatureKit
 
-Capture de signatures manuscrites, **full SwiftUI** : ni `UIViewRepresentable`,
-ni PencilKit, ni dépendance externe.
+Handwritten signature capture for iOS, **full SwiftUI**: no
+`UIViewRepresentable`, no PencilKit, no external dependency.
 
 - iOS 18.6+
-- Trait d'épaisseur variable, dérivée de la vitesse du geste
-- Export PNG transparent recadré au tracé **et** tracé vectoriel maison
-  (`SignatureDrawing`, du JSON, quelques Ko)
-- Ne décide pas de la persistance : `Signature` est `Codable`, tu en fais
-  ce que tu veux (SwiftData, JSON, API, ou rien du tout)
+- Variable stroke width, derived from the speed of the gesture
+- Transparent PNG export cropped to the strokes **and** a vector drawing
+  (`SignatureDrawing`, JSON, a few KB)
+- Persistence is yours: `Signature` is `Codable` and `Identifiable`, and is
+  stored as it is (SwiftData, JSON, API, file…)
+- Usable with VoiceOver turned on
+- Labels in English and French (String Catalog)
 
 ## Installation
 
-Xcode → File → Add Package Dependencies → l'URL de ton dépôt, ou en local :
-File → Add Package Dependencies → Add Local… → ce dossier.
+Xcode → File → Add Package Dependencies → the repository URL, or locally:
+File → Add Package Dependencies → Add Local… → this folder.
 
 ```swift
 .package(url: "https://…/SignatureKit.git", from: "1.0.0")
@@ -21,109 +23,153 @@ File → Add Package Dependencies → Add Local… → ce dossier.
 
 ## Usage
 
+### One signature per row of a list
+
 ```swift
 import SignatureKit
+import SwiftUI
 
-struct CrewSignaturesView: View {
-    let crew: [Person]
-    @State private var signatures: [Person.ID: Signature] = [:]
-    @State private var cdbSignature = Signature()
-    @State private var target: SigningTarget?
+struct Signer: Identifiable {
+    let id = UUID()
+    let name: String
+}
+
+struct SignersView: View {
+    let signers: [Signer]
+    @State private var signatures: [Signer.ID: Signature] = [:]
+    @State private var current: Signer?
 
     var body: some View {
-        List {
-            ForEach(crew) { person in
-                HStack {
-                    Text(person.fullNameWithRank)
-                    Spacer()
-                    if let signature = signatures[person.id], signature.isSigned {
-                        SignatureThumbnail(signature)
-                            .onTapGesture { target = .member(person) }
-                    } else {
-                        Button("Signature") { target = .member(person) }
-                    }
+        List(signers) { signer in
+            HStack {
+                Text(signer.name)
+                Spacer()
+                if let signature = signatures[signer.id], signature.isSigned {
+                    SignatureThumbnail(signature)
+                        .onTapGesture { current = signer }
+                } else {
+                    Button("Sign") { current = signer }
                 }
             }
         }
         .signaturePrivacyScreen()
-        .signaturePad(item: $target) { target in
-            switch target {
-            case .member(let person):
-                // le nom est connu : pas de saisie
-                SignaturePadConfiguration(title: person.fullNameWithRank,
-                                          signerName: person.fullNameWithRank,
-                                          asksForName: false,
-                                          existing: signatures[person.id])
-            case .cdb:
-                // on ignore qui est le chef : champ libre + raccourcis
-                SignaturePadConfiguration(title: "Commandant de bord",
-                                          subtitle: "2ᵉ signature, en plus de celle de membre",
-                                          suggestedNames: crew.map(\.fullNameWithRank),
-                                          existing: cdbSignature)
-            }
-        } onValidate: { target, signature in
-            switch target {
-            case .member(let person): signatures[person.id] = signature
-            case .cdb: cdbSignature = signature
-            }
+        .signaturePad(item: $current) { signer in
+            SignaturePadConfiguration(title: signer.name,
+                                      existing: signatures[signer.id])
+        } onValidate: { signer, signature in
+            signatures[signer.id] = signature
         }
     }
 }
 ```
 
-## Notes
+### Persistence
 
-- `signaturePad(item:)` est piloté par un élément, pas par un `Bool` : dans
-  une liste, un booléen unique ouvre toujours la même ligne.
-- `signaturePrivacyScreen()` masque l'écran quand l'app passe en arrière-plan.
-  iOS en fait une capture qu'il écrit sur le disque ; une signature affichée
-  s'y retrouve.
-- `SignatureCanvas` se place où tu veux, `ScrollView` comprise : il n'y a
-  plus de `UIScrollView` cachée pour se disputer le geste.
-- Le tracé est enregistré avec la taille de la zone de saisie, donc une
-  signature faite sur iPhone se recharge correctement sur iPad.
-- Les libellés sont en français, en dur. Pour les localiser, remplace les
-  littéraux par `Text(key, bundle: .module)` et ajoute `defaultLocalization`
-  dans `Package.swift`.
+The package ships no storage type: the model belongs to the app, which saves
+`Signature` values directly.
 
-## Réutilisation dans plusieurs projets
+```swift
+@Model final class Document {
+    var signatures: [Signature] = []
+}
 
-Publie une fois, tague, consomme partout :
+// On confirmation
+document.signatures.append(signature)
 
-```bash
-git init && git add . && git commit -m "SignatureKit 1.0.0"
-git remote add origin git@github.com:toi/SignatureKit.git
-git push -u origin main
-git tag 1.0.0 && git push --tags
+// To reopen the sheet on an existing signature
+let existing = document.signatures.first { $0.id == id }
 ```
 
-Dans chaque app : **Add Package Dependencies** → l'URL → *Up to Next Major
-Version*. Sans tag, Xcode ne voit aucune version et te force sur une branche,
-ce qui rend les builds non reproductibles.
+Every `Signature` carries an `id` (`UUID`) created on init and kept
+afterwards, `clear()` included: where a signature sits in the app does not
+move when it is drawn again.
 
-### Itérer sur le package depuis une app
+## Notes
 
-Glisse le dossier local dans la fenêtre du projet : Xcode fait primer le
-package local sur la dépendance distante, du même nom. Tu modifies, tu testes
-dans l'app réelle, et tu retires le dossier une fois le tag poussé — sans
-jamais toucher à la déclaration de dépendance.
+- `signaturePad(item:)` is driven by an item, not by a `Bool`: in a list, a
+  single boolean always opens the same row.
+- The package captures no identity. Who signs, in what capacity, under which
+  name: all of that belongs to the app, which keeps the `Signature` next to
+  the rest. The sheet title stays free — that is where a name goes.
+- Once a stroke is down, the sheet no longer closes on a downward swipe: only
+  Cancel abandons a signature in progress.
+- `signaturePrivacyScreen()` hides the content when the app goes to the
+  background. iOS snapshots the screen and writes that image to disk; a
+  signature left on screen would end up there.
+- `SignatureCanvas` fits anywhere, `ScrollView` included.
+- The drawing is saved together with the size of the area it was drawn in: a
+  signature made on iPhone reloads correctly on iPad.
+- Labels live in `Sources/SignatureKit/Resources/Localizable.xcstrings`, in
+  English (the development language) and French. Adding a language happens in
+  that catalog, without touching the code.
+- Catalog entries are written by hand: Xcode generates one symbol per entry
+  (`Text(.done)`, `Text(.signAboveTheLine)`) that finds the package bundle on
+  its own. A missing or renamed entry does not compile.
+- The language shown follows the **app**, not the device: an app that does not
+  declare French in its localizations (Project → Info → Localizations) shows
+  the sheet in English, even on an iPhone set to French.
 
-### Ce qui doit rester dehors
+## Building and testing
 
-La seule vraie menace pour un package partagé, c'est l'ajout commode :
-`Person`, une notion de chef d'équipe, une règle métier « il faut deux
-signatures ». Règle simple : si le code emploie le vocabulaire d'un de tes
-métiers, il appartient à l'app, pas ici.
+The package depends on UIKit: it only builds for iOS.
 
-### Points d'attention
+- In Xcode, pick an iOS simulator as the destination. “My Mac” gives
+  `No such module 'UIKit'`.
+- `swift build` builds for macOS and fails for the same reason. From the
+  command line, go through `xcodebuild`:
 
-- `Package.resolved` : à committer dans les apps, pas dans le package.
-- Le plancher `.iOS("18.6")` s'impose à tous les consommateurs. Rien dans
-  le code n'exige iOS 26 : `onGeometryChange` (18.0) est l'API la plus
-  récente utilisée. Monte-le si tes apps sont déjà plus haut.
-- Les libellés français en dur deviennent bloquants dès qu'une app doit
-  parler une autre langue. C'est la première dette à rembourser.
+```bash
+xcodebuild test -scheme SignatureKit -destination 'platform=iOS Simulator,name=iPhone 17'
+```
 
-## Licence
+If `xcodebuild` answers that it requires Xcode, `xcode-select` points at the
+Command Line Tools:
+
+```bash
+sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+```
+
+## Publishing and reusing
+
+Tag every published version:
+
+```bash
+git tag 3.0.0 && git push --tags
+```
+
+In each app: **Add Package Dependencies** → the URL → *Up to Next Major
+Version*. Without a tag, Xcode sees no version and forces a branch, which
+makes builds unreproducible.
+
+### Iterating on the package from an app
+
+Drag the local folder into the project window: Xcode gives the local package
+precedence over the remote dependency of the same name. Edit, test in the real
+app, then remove the folder once the tag is pushed — without ever touching the
+dependency declaration.
+
+### What must stay out
+
+The main threat to a shared package is the convenient addition: a model type
+from an app, a business role, a rule along the lines of “this document needs
+N signatures”. Simple rule: if the code speaks the vocabulary of a trade, it
+belongs to the app, not here.
+
+### Things to watch
+
+- `Package.resolved`: commit it in apps, not in the package.
+- Stored inside a SwiftData model, a `Signature` carries its PNG in the row.
+  For many signatures or heavy exports, declare a model on the app side with
+  `@Attribute(.externalStorage) var pngData: Data?` and rebuild a `Signature`
+  only when displaying it.
+- The `.iOS("18.6")` floor applies to every consumer. Nothing in the code
+  needs more than iOS 18: `onGeometryChange` (18.0) is the most recent API
+  used. Raise it if every app is already higher.
+- A new label goes into the catalog first (the **+** button), then is used
+  through its symbol after a build.
+- The generated symbols require **Xcode 26 or newer** in every app that builds
+  the package.
+
+## License
 
 MIT.

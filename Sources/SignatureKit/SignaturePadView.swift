@@ -1,8 +1,7 @@
 import SwiftUI
 
-/// La feuille de signature complète : champ nom optionnel, zone de dessin,
-/// annuler / rétablir / effacer, et un bouton Valider inactif tant que rien
-/// n'a été tracé.
+/// The complete signature sheet: drawing area, undo / redo / clear, and a
+/// confirm button that stays disabled until something has been drawn.
 public struct SignaturePadView: View {
 
     private let configuration: SignaturePadConfiguration
@@ -10,7 +9,6 @@ public struct SignaturePadView: View {
 
     @Environment(\.dismiss) private var dismiss
     @State private var canvas = SignatureCanvasController()
-    @State private var name = ""
 
     public init(configuration: SignaturePadConfiguration,
                 onValidate: @escaping (Signature) -> Void) {
@@ -27,7 +25,6 @@ public struct SignaturePadView: View {
                         .foregroundStyle(.secondary)
                 }
 
-                nameField
                 pad
                 tools
 
@@ -38,46 +35,22 @@ public struct SignaturePadView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Annuler") { dismiss() }
+                    Button { dismiss() } label: { Text(.cancel) }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Valider") { validate() }
+                    Button { validate() } label: { Text(.done) }
                         .fontWeight(.semibold)
                         .disabled(canvas.isEmpty)
                 }
             }
             .onAppear {
-                name = configuration.signerName
                 canvas.minimumWidth = configuration.minimumWidth
                 canvas.maximumWidth = configuration.maximumWidth
                 canvas.load(configuration.existing?.strokeData)
             }
         }
-    }
-
-    @ViewBuilder
-    private var nameField: some View {
-        if configuration.asksForName {
-            VStack(alignment: .leading, spacing: 8) {
-                TextField("Nom du signataire", text: $name)
-                    .textFieldStyle(.roundedBorder)
-                    .textInputAutocapitalization(.words)
-                    .autocorrectionDisabled()
-
-                if !configuration.suggestedNames.isEmpty {
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: 8) {
-                            ForEach(configuration.suggestedNames, id: \.self) { suggestion in
-                                Button(suggestion) { name = suggestion }
-                                    .buttonStyle(.bordered)
-                                    .controlSize(.small)
-                            }
-                        }
-                        .padding(.horizontal, 1)
-                    }
-                }
-            }
-        }
+        // A downward swipe must not throw away a signature in progress.
+        .interactiveDismissDisabled(!canvas.isEmpty)
     }
 
     private var pad: some View {
@@ -94,14 +67,14 @@ public struct SignaturePadView: View {
                         .fill(.tertiary)
                         .frame(height: 1)
                     if canvas.isEmpty {
-                        Text("Signez au-dessus de la ligne")
+                        Text(.signAboveTheLine)
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
                 }
                 .padding(.horizontal, 24)
                 .padding(.bottom, 16)
-                .allowsHitTesting(false)   // la ligne ne doit pas voler le geste
+                .allowsHitTesting(false)   // the line must not steal the gesture
             }
             .clipShape(RoundedRectangle(cornerRadius: 14))
     }
@@ -109,19 +82,19 @@ public struct SignaturePadView: View {
     private var tools: some View {
         HStack {
             Button { canvas.undo() } label: {
-                Label("Annuler le trait", systemImage: "arrow.uturn.backward")
+                Label { Text(.undo) } icon: { Image.undo }
             }
             .disabled(!canvas.canUndo)
 
             Button { canvas.redo() } label: {
-                Label("Rétablir", systemImage: "arrow.uturn.forward")
+                Label { Text(.redo) } icon: { Image.redo }
             }
             .disabled(!canvas.canRedo)
 
             Spacer()
 
             Button(role: .destructive) { canvas.clear() } label: {
-                Label("Tout effacer", systemImage: "trash")
+                Label { Text(.clear) } icon: { Image.clear }
             }
             .disabled(canvas.isEmpty)
         }
@@ -135,11 +108,8 @@ public struct SignaturePadView: View {
         guard let image = canvas.image(ink: configuration.ink,
                                        scale: configuration.exportScale,
                                        margin: configuration.exportMargin) else { return }
-        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        onValidate(Signature(signerName: trimmed.isEmpty ? configuration.signerName : trimmed,
-                             image: image,
-                             strokeData: canvas.drawingData()))
+        onValidate(Signature(image: image, strokeData: canvas.drawingData()))
         dismiss()
     }
 }

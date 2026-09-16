@@ -1,9 +1,9 @@
 import CoreGraphics
 import Foundation
 
-/// Un trait : une suite de points, chacun avec son épaisseur locale.
-/// L'épaisseur vient de la vitesse du geste — c'est ce qui donne un tracé
-/// vivant plutôt qu'un trait de feutre uniforme.
+/// One stroke: a run of points, each with its own local width.
+/// The width comes from the speed of the gesture — that is what makes the
+/// line look alive instead of a flat marker trace.
 public struct SignatureStroke: Codable, Equatable, Sendable {
 
     public struct Point: Codable, Equatable, Sendable {
@@ -29,10 +29,10 @@ public struct SignatureStroke: Codable, Equatable, Sendable {
     public init(points: [Point] = []) { self.points = points }
 }
 
-/// Le tracé complet, plus la taille de la zone où il a été saisi.
+/// The complete drawing, plus the size of the area it was drawn in.
 ///
-/// Sans cette taille, recharger une signature sur un pad de dimensions
-/// différentes (iPhone puis iPad) la placerait n'importe où.
+/// Without that size, reloading a signature on a pad of different
+/// dimensions (iPhone, then iPad) would place it anywhere.
 public struct SignatureDrawing: Codable, Equatable, Sendable {
 
     public var canvasSize: CGSize
@@ -51,7 +51,7 @@ public struct SignatureDrawing: Codable, Equatable, Sendable {
         try JSONEncoder().encode(self)
     }
 
-    /// Replace le tracé dans une zone d'une autre taille, sans le déformer.
+    /// Moves the drawing into an area of another size, without distorting it.
     public func scaled(to size: CGSize) -> SignatureDrawing {
         guard canvasSize.width > 0, canvasSize.height > 0,
               size.width > 0, size.height > 0 else { return self }
@@ -67,7 +67,7 @@ public struct SignatureDrawing: Codable, Equatable, Sendable {
         return SignatureDrawing(canvasSize: size, strokes: scaled)
     }
 
-    /// Boîte englobante du tracé, épaisseurs comprises.
+    /// Bounding box of the drawing, stroke widths included.
     public func bounds(margin: CGFloat = 0) -> CGRect? {
         let points = strokes.flatMap(\.points)
         guard let first = points.first else { return nil }

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Détient le tracé et les actions : annuler, rétablir, effacer, exporter.
+/// Holds the strokes and the actions: undo, redo, clear, export.
 @Observable
 public final class SignatureCanvasController {
 
@@ -11,15 +11,15 @@ public final class SignatureCanvasController {
     @ObservationIgnored internal var canvasSize: CGSize = .zero
     @ObservationIgnored private var pendingDrawing: SignatureDrawing?
 
-    /// Bornes de l'épaisseur du trait, en points.
+    /// Stroke width bounds, in points.
     public var minimumWidth: CGFloat = 1.5
     public var maximumWidth: CGFloat = 5
-    /// Vitesse (pt/s) au-delà de laquelle le trait atteint son épaisseur mini.
+    /// Speed (pt/s) beyond which the stroke reaches its minimum width.
     public var speedForMinimumWidth: CGFloat = 2500
 
     public init() {}
 
-    // MARK: - État
+    // MARK: - State
 
     public var isEmpty: Bool { strokes.isEmpty && currentPoints.isEmpty }
     public var canUndo: Bool { !strokes.isEmpty }
@@ -43,7 +43,7 @@ public final class SignatureCanvasController {
         redoStack.removeAll()
     }
 
-    // MARK: - Saisie
+    // MARK: - Input
 
     @ObservationIgnored private var lastLocation: CGPoint?
     @ObservationIgnored private var lastTime: Date?
@@ -63,7 +63,7 @@ public final class SignatureCanvasController {
         }
 
         let distance = hypot(location.x - lastLocation.x, location.y - lastLocation.y)
-        // On filtre les points trop rapprochés : moins de bruit, moins de data.
+        // Points too close together are dropped: less noise, less data.
         guard distance > 1 else { return }
 
         let elapsed = max(time.timeIntervalSince(lastTime), 1.0 / 240)
@@ -71,7 +71,7 @@ public final class SignatureCanvasController {
         let ratio = min(1, speed / speedForMinimumWidth)
         let target = maximumWidth - (maximumWidth - minimumWidth) * ratio
 
-        // Lissage : sans ça l'épaisseur saute à chaque changement de vitesse.
+        // Smoothing: without it the width jumps at every change of speed.
         let width = lastWidth * 0.6 + target * 0.4
 
         currentPoints.append(.init(x: location.x, y: location.y, width: width))
@@ -88,13 +88,13 @@ public final class SignatureCanvasController {
         }
         guard !currentPoints.isEmpty else { return }
         strokes.append(SignatureStroke(points: currentPoints))
-        redoStack.removeAll()   // un nouveau trait invalide le rétablissement
+        redoStack.removeAll()   // a new stroke invalidates redo
     }
 
-    // MARK: - Chargement / export
+    // MARK: - Loading and export
 
-    /// Recharge un tracé existant. Il sera remis à l'échelle de la zone
-    /// dès que celle-ci est connue.
+    /// Reloads an existing drawing. It is scaled to the drawing area as soon
+    /// as that area's size is known.
     public func load(_ data: Data?) {
         guard let data, let drawing = try? SignatureDrawing(data: data) else { return }
         if canvasSize == .zero {
@@ -121,7 +121,7 @@ public final class SignatureCanvasController {
         try? drawing()?.data()
     }
 
-    /// PNG transparent recadré au plus près du tracé.
+    /// Transparent PNG, cropped tight around the strokes.
     @MainActor
     public func image(ink: Color = .black, scale: CGFloat = 3, margin: CGFloat = 12) -> UIImage? {
         guard !strokes.isEmpty,
@@ -142,10 +142,10 @@ public final class SignatureCanvasController {
     }
 }
 
-/// La zone de dessin nue, si tu veux composer ta propre interface autour.
+/// The bare drawing area, to build your own interface around it.
 ///
-/// Full SwiftUI : aucun `UIViewRepresentable`, donc elle se place où tu veux,
-/// y compris dans une `ScrollView`.
+/// Full SwiftUI: no `UIViewRepresentable`, so it fits anywhere, including
+/// inside a `ScrollView`.
 public struct SignatureCanvas: View {
 
     private let controller: SignatureCanvasController
@@ -162,6 +162,12 @@ public struct SignatureCanvas: View {
             SignatureStrokesView(strokes: [SignatureStroke(points: controller.currentPoints)], ink: ink)
         }
         .contentShape(Rectangle())
+        .accessibilityElement()
+        .accessibilityLabel(Text(.signatureArea))
+        .accessibilityValue(controller.isEmpty ? Text(.empty) : Text(.signed))
+        .accessibilityHint(Text(.drawYourSignatureWithYourFinger))
+        // Without this trait, VoiceOver swallows the gesture and nothing is drawn.
+        .accessibilityAddTraits(.allowsDirectInteraction)
         .onGeometryChange(for: CGSize.self) { $0.size } action: { size in
             controller.canvasSizeChanged(to: size)
         }

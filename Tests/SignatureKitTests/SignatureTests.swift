@@ -1,4 +1,5 @@
 import XCTest
+import UIKit
 @testable import SignatureKit
 
 final class SignatureTests: XCTestCase {
@@ -22,8 +23,8 @@ final class SignatureTests: XCTestCase {
         XCTAssertNotNil(signature.signedAt)
     }
 
-    /// Le piège d'origine : un `guard let else { return }` dans le setter
-    /// laissait l'ancienne image en place quand on passait `nil`.
+    /// The original trap: a `guard let else { return }` in the setter left
+    /// the previous image in place when `nil` was assigned.
     func testAssigningNilErasesTheSignature() {
         var signature = Signature(image: makeImage(), strokeData: Data([1, 2, 3]))
         signature.image = nil
@@ -32,14 +33,41 @@ final class SignatureTests: XCTestCase {
         XCTAssertNil(signature.strokeData)
     }
 
+    func testEachSignatureGetsItsOwnIdentity() {
+        XCTAssertNotEqual(Signature().id, Signature().id)
+    }
+
+    /// Wiping a signature keeps the row it belongs to: the identity has to
+    /// survive so the app can store the new drawing in the same place.
+    func testIdentitySurvivesClear() {
+        var signature = Signature(image: makeImage())
+        let id = signature.id
+
+        signature.clear()
+
+        XCTAssertEqual(signature.id, id)
+        XCTAssertFalse(signature.isSigned)
+    }
+
     func testCodableRoundTrip() throws {
-        let original = Signature(signerName: "Cpt Martin",
-                                 image: makeImage(),
-                                 strokeData: Data([1, 2, 3]))
+        let original = Signature(image: makeImage(), strokeData: Data([1, 2, 3]))
         let decoded = try JSONDecoder().decode(Signature.self,
                                                from: JSONEncoder().encode(original))
         XCTAssertEqual(decoded, original)
-        XCTAssertEqual(decoded.signerName, "Cpt Martin")
+        XCTAssertEqual(decoded.id, original.id)
         XCTAssertEqual(decoded.strokeData, Data([1, 2, 3]))
+    }
+
+    /// Signatures stored by earlier versions must stay readable: no `id`
+    /// back then, and a `signerName` the package no longer knows about.
+    func testDecodingASignatureSavedByAnEarlierVersion() throws {
+        let json = Data(#"{"signerName":"Alex Dupont","strokeData":"AQID"}"#.utf8)
+
+        let decoded = try JSONDecoder().decode(Signature.self, from: json)
+
+        XCTAssertEqual(decoded.strokeData, Data([1, 2, 3]))
+        XCTAssertFalse(decoded.isSigned)
+        XCTAssertNotEqual(decoded.id,
+                          try JSONDecoder().decode(Signature.self, from: json).id)
     }
 }
