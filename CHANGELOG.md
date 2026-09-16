@@ -9,6 +9,18 @@ than the number:
   new type, new view).
 - **patch**: a behavior fix, API unchanged.
 
+## [1.0.3]
+
+- Fixed: the undo, redo and clear buttons showed their icon twice and never
+  their title — an `Image` constant shared its name with the catalog entry,
+  and `Text(.undo)` picked the image. The buttons now show their icon only,
+  with the title kept for VoiceOver.
+- Fixed: a reopened signature was shrunk. SwiftUI first reports a transient
+  size (76 pt wide instead of 370), the reloaded drawing was fitted to it once
+  and never again — and saved that way on confirmation. An untouched reloaded
+  drawing is now re-fitted from its original on every size change.
+- Tests guarding the re-fit, and that an edited drawing is never re-fitted.
+
 ## [1.0.2]
 
 - Fixed: nothing could be drawn. An empty canvas has no content, so its

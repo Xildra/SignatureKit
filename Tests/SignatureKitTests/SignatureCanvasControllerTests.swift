@@ -102,6 +102,36 @@ final class SignatureCanvasControllerTests: XCTestCase {
         XCTAssertTrue(controller.isEmpty)
     }
 
+    /// SwiftUI can report a transient size first — 76 pt wide at launch, seen
+    /// on the simulator. A reloaded drawing must end up fitted to the final
+    /// size instead of staying frozen at the first one.
+    func testReloadedDrawingFollowsTheFinalSize() throws {
+        let saved = SignatureDrawing(canvasSize: CGSize(width: 360, height: 240),
+                                     strokes: [SignatureStroke(points: [.init(x: 180, y: 120, width: 4)])])
+        let controller = SignatureCanvasController()
+
+        controller.canvasSizeChanged(to: CGSize(width: 76, height: 240))
+        controller.load(try saved.data())
+        controller.canvasSizeChanged(to: CGSize(width: 360, height: 240))
+
+        XCTAssertEqual(controller.strokes.first?.points.first, .init(x: 180, y: 120, width: 4))
+    }
+
+    /// Once the reloaded drawing is edited, the strokes on screen are the
+    /// truth: a later size change must not bring back what was undone.
+    func testEditedDrawingIsNotRefittedFromTheOriginal() throws {
+        let saved = SignatureDrawing(canvasSize: CGSize(width: 360, height: 240),
+                                     strokes: [SignatureStroke(points: [.init(x: 180, y: 120, width: 4)])])
+        let controller = SignatureCanvasController()
+        controller.canvasSizeChanged(to: CGSize(width: 360, height: 240))
+        controller.load(try saved.data())
+
+        controller.undo()
+        controller.canvasSizeChanged(to: CGSize(width: 300, height: 240))
+
+        XCTAssertTrue(controller.strokes.isEmpty)
+    }
+
     @MainActor
     func testImageIsCroppedToTheStroke() throws {
         let controller = SignatureCanvasController()

@@ -83,23 +83,27 @@ public struct SignaturePadView: View {
 
     private var tools: some View {
         HStack {
+            // The type is spelled out: `Text(.undo)` alone would pick `Image.undo`
+            // over the catalog entry, and VoiceOver would lose the title.
             Button { canvas.undo() } label: {
-                Label { Text(.undo) } icon: { Image.undo }
+                Label { Text(LocalizedStringResource.undo) } icon: { Image.undo }
             }
             .disabled(!canvas.canUndo)
 
             Button { canvas.redo() } label: {
-                Label { Text(.redo) } icon: { Image.redo }
+                Label { Text(LocalizedStringResource.redo) } icon: { Image.redo }
             }
             .disabled(!canvas.canRedo)
 
             Spacer()
 
             Button(role: .destructive) { canvas.clear() } label: {
-                Label { Text(.clear) } icon: { Image.clear }
+                Label { Text(LocalizedStringResource.clear) } icon: { Image.clear }
             }
             .disabled(canvas.isEmpty)
         }
+        // Icons on screen, titles kept for VoiceOver.
+        .labelStyle(.iconOnly)
         .font(.footnote)
         .buttonStyle(.bordered)
         .controlSize(.small)

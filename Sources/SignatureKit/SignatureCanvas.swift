@@ -9,7 +9,9 @@ public final class SignatureCanvasController {
 
     @ObservationIgnored private var redoStack: [SignatureStroke] = []
     @ObservationIgnored internal var canvasSize: CGSize = .zero
-    @ObservationIgnored private var pendingDrawing: SignatureDrawing?
+    /// The drawing as reloaded, kept while it is untouched: every new size is
+    /// fitted from this original, never from an already scaled copy.
+    @ObservationIgnored private var loadedDrawing: SignatureDrawing?
 
     /// Stroke width bounds, in points.
     public var minimumWidth: CGFloat = 1.5
@@ -30,17 +32,20 @@ public final class SignatureCanvasController {
     public func undo() {
         guard let last = strokes.popLast() else { return }
         redoStack.append(last)
+        loadedDrawing = nil
     }
 
     public func redo() {
         guard let stroke = redoStack.popLast() else { return }
         strokes.append(stroke)
+        loadedDrawing = nil
     }
 
     public func clear() {
         strokes.removeAll()
         currentPoints.removeAll()
         redoStack.removeAll()
+        loadedDrawing = nil
     }
 
     // MARK: - Input
@@ -53,6 +58,7 @@ public final class SignatureCanvasController {
         lastLocation = location
         lastTime = time
         lastWidth = maximumWidth
+        loadedDrawing = nil
         currentPoints = [.init(x: location.x, y: location.y, width: maximumWidth)]
     }
 
@@ -93,23 +99,26 @@ public final class SignatureCanvasController {
 
     // MARK: - Loading and export
 
-    /// Reloads an existing drawing. It is scaled to the drawing area as soon
-    /// as that area's size is known.
+    /// Reloads an existing drawing, fitted to the drawing area as soon as that
+    /// area's size is known.
     public func load(_ data: Data?) {
         guard let data, let drawing = try? SignatureDrawing(data: data) else { return }
-        if canvasSize == .zero {
-            pendingDrawing = drawing
-        } else {
-            strokes = drawing.scaled(to: canvasSize).strokes
-        }
+        loadedDrawing = drawing
+        fitLoadedDrawing()
     }
 
     internal func canvasSizeChanged(to size: CGSize) {
         canvasSize = size
-        if let pendingDrawing {
-            strokes = pendingDrawing.scaled(to: size).strokes
-            self.pendingDrawing = nil
-        }
+        fitLoadedDrawing()
+    }
+
+    /// SwiftUI can report transient sizes first — 76 pt wide at launch, before
+    /// the real 370 pt. Fitting once would freeze the drawing at that first
+    /// size, so an untouched reloaded drawing is re-fitted from its original
+    /// on every change.
+    private func fitLoadedDrawing() {
+        guard let loadedDrawing, canvasSize.width > 0, canvasSize.height > 0 else { return }
+        strokes = loadedDrawing.scaled(to: canvasSize).strokes
     }
 
     public func drawing() -> SignatureDrawing? {
