@@ -9,6 +9,16 @@ than the number:
   new type, new view).
 - **patch**: a behavior fix, API unchanged.
 
+## [1.0.2]
+
+- Fixed: nothing could be drawn. An empty canvas has no content, so its
+  SwiftUI stack was zero-sized and received no touch at all — the first stroke
+  could never begin. The canvas now fills the space it is given from the start.
+- `SignaturePadView` turns interactive dismissal off for the whole sheet, not
+  only once a stroke is down, so a downward stroke never drags or dismisses
+  it. The drag indicator goes with it; Cancel dismisses.
+- Tests guarding that the canvas fills its space, empty or not.
+
 ## [1.0.1]
 
 - `Signature` carries a stable `id` (`UUID`) and becomes `Identifiable`: it is
@@ -21,9 +31,8 @@ than the number:
   still read, the name is simply ignored.
 - `SignatureCanvas` is accessible: label, value, and the
   `allowsDirectInteraction` trait so it can be drawn on with VoiceOver on.
-- `SignaturePadView` turns interactive dismissal off entirely: the sheet's
-  pan gesture used to win over the drawing gesture, so the sheet slid instead
-  of a stroke being drawn. The drag indicator goes with it; Cancel dismisses.
+- `SignaturePadView` no longer closes on a downward swipe once a stroke is
+  down: only Cancel abandons a signature in progress.
 - Labels moved to a String Catalog, in English (the development language) and
   French, referenced through the symbols Xcode generates. **Visible change**:
   an app that does not declare French in its localizations now shows the sheet

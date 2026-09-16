@@ -91,9 +91,9 @@ move when it is drawn again.
 - The package captures no identity. Who signs, in what capacity, under which
   name: all of that belongs to the app, which keeps the `Signature` next to
   the rest. The sheet title stays free — that is where a name goes.
-- The sheet cannot be swiped away: its dismiss gesture competes with the
-  drawing gesture and wins, so the sheet would slide instead of a stroke being
-  drawn. Cancel is the way out — which also protects a signature in progress.
+- The sheet cannot be swiped away, so a downward stroke never drags or
+  dismisses it. Cancel is the way out — which also protects a signature in
+  progress.
 - `signaturePrivacyScreen()` hides the content when the app goes to the
   background. iOS snapshots the screen and writes that image to disk; a
   signature left on screen would end up there.

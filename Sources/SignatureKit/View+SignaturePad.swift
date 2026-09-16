@@ -16,8 +16,7 @@ public extension View {
             SignaturePadView(configuration: configuration(value)) { signature in
                 onValidate(value, signature)
             }
-            // No drag indicator: it would advertise a swipe the sheet refuses,
-            // so that the drawing gesture can go through.
+            // No drag indicator: it would advertise a swipe the sheet refuses.
             .signaturePrivacyScreen()
         }
     }

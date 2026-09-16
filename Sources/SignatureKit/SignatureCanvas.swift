@@ -158,6 +158,11 @@ public struct SignatureCanvas: View {
 
     public var body: some View {
         ZStack {
+            // An empty canvas draws nothing, and a stack with no content is
+            // zero-sized: its touch area would be 0×0, so the first stroke could
+            // never begin. `Color.clear` makes the stack fill the space it is
+            // given from the start.
+            Color.clear
             SignatureStrokesView(strokes: controller.strokes, ink: ink)
             SignatureStrokesView(strokes: [SignatureStroke(points: controller.currentPoints)], ink: ink)
         }
