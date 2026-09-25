@@ -16,15 +16,21 @@ struct SignatureStrokesView: View {
     private let step: CGFloat = 0.5
 
     var body: some View {
-        ZStack {
-            ForEach(layers, id: \.width) { layer in
-                layer.path.stroke(
-                    ink,
-                    style: StrokeStyle(lineWidth: layer.width, lineCap: .round, lineJoin: .round)
-                )
-            }
-        }
-        .drawingGroup()
+		let layers = self.layers
+		
+		if layers.isEmpty {
+			Color.clear
+		} else {
+			ZStack {
+				ForEach(layers, id: \.width) { layer in
+					layer.path.stroke(
+						ink,
+						style: StrokeStyle(lineWidth: layer.width, lineCap: .round, lineJoin: .round)
+					)
+				}
+			}
+			.drawingGroup()
+		}
     }
 
     private struct Layer: Identifiable {
