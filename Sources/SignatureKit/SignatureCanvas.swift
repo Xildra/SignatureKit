@@ -46,6 +46,8 @@ public final class SignatureCanvasController {
         currentPoints.removeAll()
         redoStack.removeAll()
         loadedDrawing = nil
+        lastLocation = nil
+        lastTime = nil
     }
 
     // MARK: - Input
@@ -101,7 +103,12 @@ public final class SignatureCanvasController {
 
     /// Reloads an existing drawing, fitted to the drawing area as soon as that
     /// area's size is known.
+    ///
+    /// Whatever was there before goes first, `nil` included: SwiftUI can keep
+    /// the controller of a sheet from one presentation to the next, and the
+    /// previous person's drawing must never show up for the next one.
     public func load(_ data: Data?) {
+        clear()
         guard let data, let drawing = try? SignatureDrawing(data: data) else { return }
         loadedDrawing = drawing
         fitLoadedDrawing()
@@ -168,6 +175,12 @@ public struct SignatureCanvas: View {
     private let controller: SignatureCanvasController
     private let ink: Color
 
+    /// Reset by SwiftUI when the gesture ends *or is cancelled*. `onEnded` is
+    /// not called on cancellation (the sheet appearing or going, a system
+    /// gesture): the stroke would stay in progress, shown but never committed,
+    /// and the next touch would extend it instead of starting a new one.
+    @GestureState private var isDrawing = false
+
     public init(controller: SignatureCanvasController, ink: Color = .black) {
         self.controller = controller
         self.ink = ink
@@ -195,6 +208,7 @@ public struct SignatureCanvas: View {
         }
         .gesture(
             DragGesture(minimumDistance: 0)
+                .updating($isDrawing) { _, state, _ in state = true }
                 .onChanged { value in
                     if controller.currentPoints.isEmpty {
                         controller.begin(at: clamped(value.location), time: value.time)
@@ -204,6 +218,10 @@ public struct SignatureCanvas: View {
                 }
                 .onEnded { _ in controller.end() }
         )
+        .onChange(of: isDrawing) { _, drawing in
+            // No-op after a normal `onEnded`; commits a cancelled stroke.
+            if !drawing { controller.end() }
+        }
     }
 
     private func clamped(_ point: CGPoint) -> CGPoint {

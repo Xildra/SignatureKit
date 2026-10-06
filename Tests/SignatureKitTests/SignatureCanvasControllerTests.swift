@@ -95,6 +95,20 @@ final class SignatureCanvasControllerTests: XCTestCase {
         XCTAssertEqual(reloaded.strokes, controller.strokes)
     }
 
+    /// A controller kept by SwiftUI from one sheet to the next: the previous
+    /// person's drawing, finished or still in progress, must not remain.
+    func testLoadingNothingWipesThePreviousDrawing() {
+        let controller = SignatureCanvasController()
+        controller.canvasSizeChanged(to: canvasSize)
+        draw(on: controller, from: CGPoint(x: 10, y: 10), to: CGPoint(x: 80, y: 40))
+        controller.begin(at: CGPoint(x: 100, y: 50), time: Date())   // never ended
+
+        controller.load(nil)
+
+        XCTAssertTrue(controller.isEmpty)
+        XCTAssertFalse(controller.canRedo)
+    }
+
     func testUnreadableDataIsIgnored() {
         let controller = SignatureCanvasController()
         controller.canvasSizeChanged(to: canvasSize)

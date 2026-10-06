@@ -16,6 +16,12 @@ than the number:
   (`isSigned == false`), with its `id` kept.
 - Fixed: the signature returned on confirmation got a new `id` instead of
   keeping the reopened one's.
+- Fixed: a stroke cut short by the system (sheet appearing or going, system
+  gesture) stayed in progress — shown, but never committed, so Done did
+  nothing, and the next touch was joined to it. A cancelled gesture now
+  commits its stroke.
+- Fixed: reopening the sheet for a person with no signature could show the
+  previous person's drawing. `load(_:)` now always starts from an empty pad.
 - Fixed: a signature drawn small came out blurry once shown at a fixed
   height, a large one sharp. The PNG is now rendered at a scale that gives
   every signature about the same pixel size.

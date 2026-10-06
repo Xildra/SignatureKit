@@ -116,6 +116,8 @@ public struct SignaturePadView: View {
     private func validate() {
         // The id is kept, reset included: the signature stays the same one.
         let id = configuration.existing?.id ?? UUID()
+        // A stroke still in progress is shown: it is part of the signature.
+        canvas.end()
 
         if canvas.isEmpty {
             guard isReopened else { return }
