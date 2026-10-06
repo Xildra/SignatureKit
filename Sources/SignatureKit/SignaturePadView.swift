@@ -40,7 +40,7 @@ public struct SignaturePadView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button { validate() } label: { Text(.done) }
                         .fontWeight(.semibold)
-                        .disabled(canvas.isEmpty)
+                        .disabled(canvas.isEmpty && !isReopened)
                 }
             }
             .onAppear {
@@ -109,13 +109,26 @@ public struct SignaturePadView: View {
         .controlSize(.small)
     }
 
+    /// A signed signature was reopened: emptying it and confirming is a reset.
+    private var isReopened: Bool { configuration.existing?.isSigned == true }
+
     @MainActor
     private func validate() {
+        // The id is kept, reset included: the signature stays the same one.
+        let id = configuration.existing?.id ?? UUID()
+
+        if canvas.isEmpty {
+            guard isReopened else { return }
+            onValidate(Signature(id: id))
+            dismiss()
+            return
+        }
+
         guard let image = canvas.image(ink: configuration.ink,
                                        scale: configuration.exportScale,
                                        margin: configuration.exportMargin) else { return }
         UINotificationFeedbackGenerator().notificationOccurred(.success)
-        onValidate(Signature(image: image, strokeData: canvas.drawingData()))
+        onValidate(Signature(id: id, image: image, strokeData: canvas.drawingData()))
         dismiss()
     }
 }

@@ -145,4 +145,24 @@ final class SignatureCanvasControllerTests: XCTestCase {
         XCTAssertEqual(image.size.height, bounds.height, accuracy: 1)
         XCTAssertLessThan(image.size.width, canvasSize.width)
     }
+
+    @MainActor
+    func testSmallAndLargeSignaturesHaveTheSamePixelSize() throws {
+        let small = SignatureCanvasController()
+        small.canvasSizeChanged(to: canvasSize)
+        draw(on: small, from: CGPoint(x: 100, y: 50), to: CGPoint(x: 150, y: 50))
+
+        let large = SignatureCanvasController()
+        large.canvasSizeChanged(to: canvasSize)
+        draw(on: large, from: CGPoint(x: 20, y: 50), to: CGPoint(x: 280, y: 50))
+
+        let smallImage = try XCTUnwrap(small.image(scale: 2, margin: 12))
+        let largeImage = try XCTUnwrap(large.image(scale: 2, margin: 12))
+
+        // Both lines are horizontal: their width fills the canvas once scaled.
+        XCTAssertEqual(smallImage.size.width * smallImage.scale,
+                       largeImage.size.width * largeImage.scale,
+                       accuracy: 2)
+        XCTAssertGreaterThan(smallImage.scale, largeImage.scale)
+    }
 }

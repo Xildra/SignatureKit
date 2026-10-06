@@ -131,6 +131,11 @@ public final class SignatureCanvasController {
     }
 
     /// Transparent PNG, cropped tight around the strokes.
+    ///
+    /// `scale` is the resolution of a signature that fills the whole canvas.
+    /// A smaller one is rendered at a higher scale, so that every image has
+    /// about the same pixel size: shown at the same height, a signature drawn
+    /// small would otherwise be upscaled and blurry, a large one sharp.
     @MainActor
     public func image(ink: Color = .black, scale: CGFloat = 3, margin: CGFloat = 12) -> UIImage? {
         guard !strokes.isEmpty,
@@ -144,8 +149,11 @@ public final class SignatureCanvasController {
             .frame(width: bounds.width, height: bounds.height, alignment: .topLeading)
             .clipped()
 
+        // Strokes are vectors: a higher scale costs pixels, never sharpness.
+        let fill = min(canvasSize.width / bounds.width, canvasSize.height / bounds.height)
+
         let renderer = ImageRenderer(content: content)
-        renderer.scale = scale
+        renderer.scale = scale * max(1, fill)
         renderer.isOpaque = false
         return renderer.uiImage
     }

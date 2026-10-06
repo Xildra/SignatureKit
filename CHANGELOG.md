@@ -9,6 +9,17 @@ than the number:
   new type, new view).
 - **patch**: a behavior fix, API unchanged.
 
+## [Unreleased]
+
+- Fixed: a reopened signature could not be reset. Clearing it left Done
+  disabled; confirming an emptied signature now returns it unsigned
+  (`isSigned == false`), with its `id` kept.
+- Fixed: the signature returned on confirmation got a new `id` instead of
+  keeping the reopened one's.
+- Fixed: a signature drawn small came out blurry once shown at a fixed
+  height, a large one sharp. The PNG is now rendered at a scale that gives
+  every signature about the same pixel size.
+
 ## [1.0.3]
 
 - Fixed: the undo, redo and clear buttons showed their icon twice and never
