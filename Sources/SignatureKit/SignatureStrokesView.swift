@@ -39,38 +39,43 @@ struct SignatureStrokesView: View {
         var id: CGFloat { width }
     }
 
-    private var layers: [Layer] {
-        var paths: [CGFloat: Path] = [:]
-
-        for stroke in strokes {
-            let points = stroke.points
-            guard let first = points.first else { continue }
-
-            // A single tap: one round dot.
-            guard points.count > 1 else {
-                let width = quantized(first.width)
-                paths[width, default: Path()].move(to: first.cgPoint)
-                paths[width]?.addLine(to: first.cgPoint)
-                continue
-            }
-
-            for index in 1..<points.count {
-                let previous = points[index - 1]
-                let current = points[index]
-                let width = quantized((previous.width + current.width) / 2)
-
-                var path = paths[width] ?? Path()
-                path.move(to: previous.cgPoint)
-                path.addLine(to: current.cgPoint)
-                paths[width] = path
-            }
-        }
-
-        return paths
-            .map { Layer(width: $0.key, path: $0.value) }
-            .sorted { $0.width < $1.width }
-    }
-
+	private var layers: [Layer] {
+		var paths: [CGFloat: Path] = [:]
+		
+		for stroke in strokes {
+			let points = stroke.points
+			guard let first = points.first else { continue }
+			
+				// A single tap: one round dot.
+			guard points.count > 1 else {
+				let width = quantized(first.width)
+				var path = paths[width] ?? Path()
+				path.move(to: first.cgPoint)
+				path.addLine(to: CGPoint(x: first.x + 0.01, y: first.y))
+				paths[width] = path
+				continue
+			}
+			
+			for index in 1..<points.count {
+				let previous = points[index - 1]
+				let current = points[index]
+				
+					// Un segment de longueur nulle ne produit aucun sommet à dessiner
+				guard previous.cgPoint != current.cgPoint else { continue }
+				
+				let width = quantized((previous.width + current.width) / 2)
+				var path = paths[width] ?? Path()
+				path.move(to: previous.cgPoint)
+				path.addLine(to: current.cgPoint)
+				paths[width] = path
+			}
+		}
+		
+		return paths
+			.map { Layer(width: $0.key, path: $0.value) }
+			.sorted { $0.width < $1.width }
+	}
+	
     private func quantized(_ width: CGFloat) -> CGFloat {
         max(step, (width / step).rounded() * step)
     }
